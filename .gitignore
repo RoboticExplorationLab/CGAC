@@ -1,0 +1,9 @@
+*/__pycache__/*
+sac/runs/*
+*/logs/
+*/tests/
+dflex/dflex/kernels
+dflex/dflex/__pycache__
+sac/__pycache__
+test.py
+sac/slurm_logs/
