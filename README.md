@@ -13,7 +13,7 @@ In this paper, we present a different class of on-policy algorithms based on SAR
 - In the project folder, create a virtual environment in Anaconda:
 
   ```
-  conda env create -f diffrl_conda.yml
+  conda env create -f cgac.yml
   conda activate cgac
   ```
 
@@ -36,33 +36,32 @@ In this paper, we present a different class of on-policy algorithms based on SAR
   pip install protobuf==3.20.0
   ````
 
-  Install Isaacgym with instructions from their [github repo]().
+  Install Isaacgym and Isaacgymenvs with instructions from their [github repo](https://github.com/NVIDIA-Omniverse/IsaacGymEnvs).
 
 ## Training
 
-Running the following commands in `examples` folder allows to train Ant with SHAC.
-```
-python train_shac.py --cfg ./cfg/shac/ant.yaml --logdir ./logs/Ant/shac
-```
 The results might slightly differ from the paper due to the randomness of the cuda and different Operating System/GPU/Python versions. The experiments in this paper were done on CentOS 7 with a NVIDIA GTX 2080 gpu.
 
-#### SHAC (Our Method)
+#### CGAC (Our Method)
 
-For example, running the following commands in `examples` folder allows to train Ant and SNU Humanoid (Humanoid MTU in the paper) environments with SHAC respectively for 5 individual seeds.
-
-```
-python train_script.py --env Ant --algo shac --num-seeds 5
-```
+Run the following commands with the appropriate flags to train a model corresponding to each environment from inside the `cgac` folder.
 
 ```
-python train_script.py --env SNUHumanoid --algo shac --num-seeds 5
+python main.py --env-name AntEnv --cuda --num_actors 4096 --batch_size_update 4096 --critic_hidden 1024 1024 256 --actor_hidden 256 256 --critic_act elu --actor_act elu --num_critic_updates 2 --grad_norm 20 --final_targ_ent_coeff 3.5 --no_automatic_entropy_tuning False --alpha_schedule constant --alpha 1e-1 --final_lr 1e-5 --clip_actor_gn --seed 1 --final
+
+python main.py --env-name HumanoidEnv --cuda --num_actors 4096 --batch_size_update 4096 --critic_hidden 1024 1024 256 --actor_hidden 256 256 --critic_act elu --actor_act elu --num_critic_updates 2 --grad_norm 20 --final_targ_ent_coeff 7.5 --seed 0 --final
+
+python main.py --env-name SNUHumanoidEnv --cuda --num_actors 4096 --batch_size_update 4096 --critic_hidden 512 512 256 --actor_hidden 256 256 --critic_act elu --actor_act elu --num_critic_updates 6 --grad_norm 20 --final_targ_ent_coeff 3.5 --seed 0 --val_horizon 8 --final
+
+python main.py --env-name AllegroHand --cuda --num_actors 16384 --batch_size_update 32768 --critic_hidden 1024 512 256 --actor_hidden 512 256 --critic_act elu --actor_act elu --num_critic_updates 2 --final_targ_ent_coeff 5 --alpha 0.2 --init_targ_ent_coeff 0.1 --val_horizon 8 --tau_value 0.05 --tau_policy 1.0 --final
 ```
 
 #### Baseline Algorithms
 
-For example, running the following commands in `examples` folder allows to train Ant environment with PPO and SAC implemented in RL_games for 5 individual seeds,
+In order to train the baselines for the Dflex environments (Ant, Humanoid, SNUHumanoid), simply run the following commands in the `examples` folder while switching the env-name of choice.
 
 ```
+python train_script.py --env Ant --algo sac --num-seeds 5
 python train_script.py --env Ant --algo ppo --num-seeds 5
 ```
 

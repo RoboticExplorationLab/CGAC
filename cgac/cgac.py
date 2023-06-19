@@ -2,7 +2,7 @@ import os
 import torch
 import torch.nn.functional as F
 from torch.optim import Adam
-from utils_sac import *
+from utils_cgac import *
 from model import GaussianPolicy, QNetwork, DeterministicPolicy
 import gc
 import ipdb
@@ -11,8 +11,8 @@ import numpy as np
 import time
 from torch.distributions import Normal
 
-class SAC(object):
-    def __init__(self, num_inputs, action_space, args, memory_sac, env=None):
+class CGAC(object):
+    def __init__(self, num_inputs, action_space, args, memory_cgac, env=None):
 
         self.gamma = args.gamma
         self.tau = args.tau_value
@@ -37,7 +37,7 @@ class SAC(object):
         self.val_running_median = 1.
         self.act_running_median = 1.
         self.state_running_median = 1.
-        self.memory_sac = memory_sac
+        self.memory_cgac = memory_cgac
 
         self.critic = QNetwork(num_inputs, action_space.shape[0], args.critic_hidden, args).to(device=self.device)
         self.critic_optim = Adam(self.critic.parameters(), lr=args.critic_lr, betas = args.betas)
@@ -194,7 +194,7 @@ class SAC(object):
         term_mask = mask_batch.clone().detach()
         
         ### Update replay buffer ###
-        self.memory_sac.add(obs_batch, action_batch, reward_batch, min_qf_next.detach().clone(), mask_batch, term_mask, next_state_log_pi.detach().clone(), self.alpha, self.episode_wts.clone().detach(), updates)
+        self.memory_cgac.add(obs_batch, action_batch, reward_batch, min_qf_next.detach().clone(), mask_batch, term_mask, next_state_log_pi.detach().clone(), self.alpha, self.episode_wts.clone().detach(), updates)
 
 
         ### Prevent suddent collapse and reset of too many envs - This can skew the distribution ###
@@ -220,7 +220,7 @@ class SAC(object):
             if num_rand_resets>0:
                 rand_reset_ids = list(np.random.randint(self.args.batch_size, size=(num_rand_resets,)))
                 reset_ids = rand_reset_ids + queue_ids
-                self.memory_sac.mask_t[:, rand_reset_ids] *= 0
+                self.memory_cgac.mask_t[:, rand_reset_ids] *= 0
             else:
                 reset_ids = queue_ids[:nids]
             self.episode_wts[reset_ids] = 1
@@ -242,7 +242,7 @@ class SAC(object):
 
     def update_parameters_with_RL(self, updates, critic_update_only=False):
 
-        obs_batch_new, action_batch, reward_batch, next_q_value, mask_batch, episode_wts = self.memory_sac.sample(self.args.batch_size_update)
+        obs_batch_new, action_batch, reward_batch, next_q_value, mask_batch, episode_wts = self.memory_cgac.sample(self.args.batch_size_update)
 
         episode_wts = episode_wts/episode_wts.mean()
         qf1, qf2 = self.critic(obs_batch_new, action_batch)  # Two Q-functions to mitigate positive bias in the policy improvement step
@@ -415,7 +415,7 @@ class SAC(object):
             min_qf_next = torch.min(qf1_next_target1, qf2_next_target1)
 
         ### Update replay buffer ###
-        self.memory_sac.add(obs_batch, action_batch, reward_batch, min_qf_next.detach().clone(), mask_batch, term_mask, next_state_log_pi.detach().clone(), self.alpha, self.episode_wts.clone().detach(), updates)
+        self.memory_cgac.add(obs_batch, action_batch, reward_batch, min_qf_next.detach().clone(), mask_batch, term_mask, next_state_log_pi.detach().clone(), self.alpha, self.episode_wts.clone().detach(), updates)
 
         ### Prevent suddent collapse and reset of too many envs - This can skew the distribution ###
         ### This is done by keeping a count of finished episodes and performing resets at a specific rate ###
@@ -438,7 +438,7 @@ class SAC(object):
             if num_rand_resets>0:
                 rand_reset_ids = list(np.random.randint(self.args.batch_size, size=(num_rand_resets,)))
                 reset_ids = rand_reset_ids + queue_ids
-                self.memory_sac.mask_t[:, rand_reset_ids] *= 0
+                self.memory_cgac.mask_t[:, rand_reset_ids] *= 0
             else:
                 reset_ids = queue_ids[:nids]
             if len(reset_ids) > 0:
@@ -460,7 +460,7 @@ class SAC(object):
 
     def update_parameters_with_RL_isaac(self, updates, critic_update_only=False):
         
-        obs_batch_new, action_batch, reward_batch, next_q_value, mask_batch, episode_wts = self.memory_sac.sample(self.args.batch_size_update)
+        obs_batch_new, action_batch, reward_batch, next_q_value, mask_batch, episode_wts = self.memory_cgac.sample(self.args.batch_size_update)
 
         episode_wts = episode_wts/episode_wts.mean()
         qf1, qf2 = self.critic(obs_batch_new, action_batch)  # Two Q-functions to mitigate positive bias in the policy improvement step
@@ -563,7 +563,7 @@ class SAC(object):
         if not os.path.exists('checkpoints/'):
             os.makedirs('checkpoints/')
         if ckpt_path is None:
-            ckpt_path = "checkpoints/sac_checkpoint_{}_{}".format(env_name, suffix)
+            ckpt_path = "checkpoints/cgac_checkpoint_{}_{}".format(env_name, suffix)
         print('Saving models to {}'.format(ckpt_path))
         torch.save({'policy_state_dict': self.policy.state_dict(),
                     'critic_state_dict': self.critic.state_dict(),

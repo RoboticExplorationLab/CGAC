@@ -123,27 +123,21 @@ else:
                     MM_caching_frequency = args.MM_caching_frequency, \
                     no_grad=args.no_grad_train)
 
-from sac import SAC
+from cgac.cgac import CGAC
 from torch.utils.tensorboard import SummaryWriter
 from replay_memory import VectorizedReplayBufferIsaacSAC
-from utils_sac import *
+from utils_cgac import *
 from utils.common import *
 
 seeding(args.seed)
-memory_sac = VectorizedReplayBufferIsaacSAC(env.obs_space.shape, env.act_space.shape, args.batch_size, args.num_steps_buffer, args.device, gamma=args.gamma, lam=args.lam, horizon=args.val_horizon, critic_method=args.critic_method)
-agent = SAC(env.obs_space.shape[0], env.act_space, args, memory_sac, env)
+memory_cgac = VectorizedReplayBufferIsaacSAC(env.obs_space.shape, env.act_space.shape, args.batch_size, args.num_steps_buffer, args.device, gamma=args.gamma, lam=args.lam, horizon=args.val_horizon, critic_method=args.critic_method)
+agent = CGAC(env.obs_space.shape[0], env.act_space, args, memory_cgac, env)
 
 if not args.test:
-    if not args.no_grad_train:
-        save_dir = f'runs/hp/{args.env_name}/VGI/ucgs0a1_tauval{args.tau_value}pi{args.tau_policy}_{args.actor_act}{args.actor_hidden}_\
-{args.critic_act}{args.critic_hidden}_actors{args.num_actors}bszup{args.batch_size_update}_schedlrlin1e420k_\
-alphainit{args.alpha}autolin02{int(args.final_targ_ent_coeff)}pk75init15_criticups{args.num_critic_updates}_bufs{args.num_steps_buffer}h{args.val_horizon}_seed{args.seed}_\
-gn{args.grad_norm}piclip{args.policy_clip}_{args.desc}_id{args.id}'
-    else:
-        save_dir = f'runs/hp/{args.env_name}/RL_final/tauval{args.tau_value}pi{args.tau_policy}_{args.actor_act}{args.actor_hidden}_\
-{args.critic_act}{args.critic_hidden}_actors{args.num_actors}bszup{args.batch_size_update}_schedlrlin1e420k_\
-alphaautolin01{int(args.final_targ_ent_coeff)}pk75init15minalphainit{args.alpha}fin{args.alpha_final}_criticups{args.num_critic_updates}_bufs{args.num_steps_buffer}h{args.val_horizon}_seed{args.seed}_\
-gn{args.grad_norm}piclip{args.policy_clip}_{args.desc}_id{args.id}'#_costmedmaxtargentm04noresets'#_remcuo'#_maxup10k'#_costmed'
+    save_dir = f'runs/hp/{args.env_name}/RL_final/tauval{args.tau_value}pi{args.tau_policy}_{args.actor_act}{args.actor_hidden}_\
+{args.critic_act}{args.critic_hidden}_actors{args.num_actors}bszup{args.batch_size_update}_alphaautolin{int(args.final_targ_ent_coeff)}_\
+{args.alpha}fin{args.alpha_final}_criticups{args.num_critic_updates}_bufs{args.num_steps_buffer}h{args.val_horizon}_seed{args.seed}_\
+piclip{args.policy_clip}_{args.desc}'
     print('save_dir : ', save_dir)
     writer = SummaryWriter(save_dir) 
 
@@ -168,7 +162,7 @@ start_time = time.time()
 for i_episode in itertools.count(1):
     critic_1_grad_state_loss = None
     critic_1_loss, critic_2_loss, policy_loss, ent_loss, alpha, log_pi, min_qf_pi, next_values, \
-    qf_loss_batch, actor_grad_norm, critic_grad_norm, = RL_update_func(memory_sac, args.batch_size, updates)
+    qf_loss_batch, actor_grad_norm, critic_grad_norm, = RL_update_func(memory_cgac, args.batch_size, updates)
     if not args.test and not args.final:
         writer.add_scalar('loss/critic_1', critic_1_loss, updates)
         writer.add_scalar('loss/critic_2', critic_2_loss, updates)
@@ -197,7 +191,7 @@ for i_episode in itertools.count(1):
         writer.add_scalar('agent_done_stats/done_len', agent.len_dones, i_episode)
         writer.add_scalar('agent_done_stats/queue_len', agent.len_queue, i_episode)
         writer.add_scalar('agent_done_stats/env_thres', agent.env_thres, i_episode)
-        writer.add_scalar('agent_done_stats/memory_sac_horizon', memory_sac.h, i_episode)
+        writer.add_scalar('agent_done_stats/memory_cgac_horizon', memory_cgac.h, i_episode)
         writer.add_scalar('agent_done_stats/sum_episode_wts', (1-agent.episode_wts).sum(), i_episode)
         writer.add_scalar('agent_done_stats/agent_curr_rew', agent.reward_batch_curr, i_episode)
 
